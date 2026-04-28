@@ -1,0 +1,112 @@
+{
+  "manifest_version": 3,
+  "name": "Job Application Tracker",
+  "version": "2.0",
+  "description": "Track job applications automatically to Google Sheets",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "identity"
+  ],
+  "host_permissions": [
+    "https://*.linkedin.com/*",
+    "https://*.indeed.com/*",
+    "https://*.glassdoor.com/*",
+    "https://*.ziprecruiter.com/*",
+    "https://*.dice.com/*",
+    "https://*.greenhouse.io/*",
+    "https://*.lever.co/*",
+    "https://*.myworkdayjobs.com/*",
+    "https://*.workday.com/*",
+    "https://*.taleo.net/*",
+    "https://*.icims.com/*",
+    "https://*.smartrecruiters.com/*",
+    "https://*.bamboohr.com/*",
+    "https://*.ashbyhq.com/*",
+    "https://*.rippling.com/*",
+    "https://*.wellfound.com/*",
+    "https://*.weworkremotely.com/*",
+    "https://*.remoteok.com/*",
+    "https://*.flexjobs.com/*",
+    "https://*.careerbuilder.com/*",
+    "https://*.monster.com/*",
+    "https://*.usajobs.gov/*",
+    "https://*.joinhandshake.com/*",
+    "https://*.paycomonline.net/*",
+    "https://*.oraclecloud.com/*",
+    "https://*.oracle.com/*",
+    "https://*.ultipro.com/*",
+    "https://*.ukg.com/*",
+    "https://sheets.googleapis.com/*",
+    "https://oauth2.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.linkedin.com/*",
+        "https://*.indeed.com/*",
+        "https://*.glassdoor.com/*",
+        "https://*.ziprecruiter.com/*",
+        "https://*.dice.com/*",
+        "https://*.greenhouse.io/*",
+        "https://*.lever.co/*",
+        "https://*.myworkdayjobs.com/*",
+        "https://*.workday.com/*",
+        "https://*.taleo.net/*",
+        "https://*.icims.com/*",
+        "https://*.smartrecruiters.com/*",
+        "https://*.bamboohr.com/*",
+        "https://*.ashbyhq.com/*",
+        "https://*.rippling.com/*",
+        "https://*.wellfound.com/*",
+        "https://*.weworkremotely.com/*",
+        "https://*.remoteok.com/*",
+        "https://*.flexjobs.com/*",
+        "https://*.careerbuilder.com/*",
+        "https://*.monster.com/*",
+        "https://*.usajobs.gov/*",
+        "https://*.joinhandshake.com/*",
+        "https://*.paycomonline.net/*",
+        "https://*.oraclecloud.com/*",
+        "https://*.oracle.com/*",
+        "https://*.ultipro.com/*",
+        "https://*.ukg.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+  "16":  "icons/icon16.png",
+  "32":  "icons/icon32.png",
+  "48":  "icons/icon48.png",
+  "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Job Tracker",
+    "default_icon": {
+      "16":  "icons/icon16.png",
+      "32":  "icons/icon32.png",
+      "48":  "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "oauth2": {
+    "client_id": "330261535237-3chkjt0a82io75auvrv3dotdial9eq2u.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/spreadsheets"
+    ]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "job-tracker@local.extension",
+      "strict_min_version": "121.0"
+    }
+  }
+}

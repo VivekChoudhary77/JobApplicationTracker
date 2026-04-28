@@ -1,0 +1,39 @@
+# ─── OS files ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Editor / IDE ─────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── Cursor / agent metadata ──────────────────────────────
+.cursor/
+.cursorrules
+
+# ─── Node (in case you add a build step later) ────────────
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# ─── Extension build artifacts ────────────────────────────
+*.zip
+*.xpi
+*.crx
+*.pem
+build/
+dist/
+
+# ─── User Files ─────────────────────────────────────
+README.md
+INSTRUCTIONS.md
+
+# ─── Local secrets (if you ever extract them) ─────────────
+.env
+.env.local
+secrets.json

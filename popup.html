@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Job Tracker</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+
+  <!-- ── Loading State ─────────────────────────────────────────────────── -->
+  <div id="state-loading" class="state">
+    <div class="center-box">
+      <div class="spinner"></div>
+      <p class="muted">Detecting page…</p>
+    </div>
+  </div>
+
+  <!-- ── Not a Job Page ────────────────────────────────────────────────── -->
+  <div id="state-not-job" class="state hidden">
+    <div class="section">
+      <div class="not-job-icon">🔍</div>
+      <h2 class="not-job-title">Not a job page</h2>
+      <p class="muted">Open a job listing to use this extension.</p>
+    </div>
+    <div class="section">
+      <p class="section-label">Supported platforms</p>
+      <div class="platform-grid">
+        <span class="platform-badge">LinkedIn</span>
+        <span class="platform-badge">Indeed</span>
+        <span class="platform-badge">Glassdoor</span>
+        <span class="platform-badge">ZipRecruiter</span>
+        <span class="platform-badge">Dice</span>
+        <span class="platform-badge">Greenhouse</span>
+        <span class="platform-badge">Lever</span>
+        <span class="platform-badge">Workday</span>
+        <span class="platform-badge">Taleo</span>
+        <span class="platform-badge">iCIMS</span>
+        <span class="platform-badge">SmartRecruiters</span>
+        <span class="platform-badge">BambooHR</span>
+        <span class="platform-badge">Ashby</span>
+        <span class="platform-badge">Rippling</span>
+        <span class="platform-badge">Wellfound</span>
+        <span class="platform-badge">WeWorkRemotely</span>
+        <span class="platform-badge">RemoteOK</span>
+        <span class="platform-badge">FlexJobs</span>
+        <span class="platform-badge">CareerBuilder</span>
+        <span class="platform-badge">Monster</span>
+        <span class="platform-badge">USAJobs</span>
+        <span class="platform-badge">Handshake</span>
+        <span class="platform-badge">+ more</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main Form ─────────────────────────────────────────────────────── -->
+  <div id="state-form" class="state hidden">
+
+    <div class="header">
+      <span class="header-title">Job Application Tracker</span>
+      <span id="confidence-badge" class="confidence-badge confidence-high" title="Extraction confidence">HIGH</span>
+    </div>
+
+    <div id="auth-banner" class="alert alert-auth hidden">
+      <span>Google account not connected.</span>
+      <button id="btn-connect" class="btn btn-connect" type="button">Connect Google Account</button>
+    </div>
+
+    <div id="low-confidence-warning" class="alert alert-warning hidden">
+      ⚠ Could not read all fields — some fields may be incorrect. Please review before saving.
+    </div>
+
+    <div class="form-body">
+
+      <div class="field-group">
+        <label for="field-company">Company <span class="required">*</span></label>
+        <input
+          type="text"
+          id="field-company"
+          placeholder="e.g. Acme Corp"
+          autocomplete="off"
+          required
+        />
+      </div>
+
+      <div class="field-group">
+        <label for="field-role">Role Applied <span class="required">*</span></label>
+        <input
+          type="text"
+          id="field-role"
+          placeholder="e.g. Software Engineer"
+          autocomplete="off"
+          required
+        />
+      </div>
+
+      <div class="field-group">
+        <label for="field-jd">Job Description</label>
+        <textarea
+          id="field-jd"
+          rows="5"
+          placeholder="Extracted job description will appear here…"
+        ></textarea>
+      </div>
+
+      <div class="field-group">
+        <label for="field-date">Date Applied</label>
+        <input type="date" id="field-date" />
+      </div>
+
+    </div><!-- /form-body -->
+
+    <div class="actions">
+      <button id="btn-reextract" class="btn btn-secondary" type="button">
+        ↺ Re-extract
+      </button>
+      <button id="btn-save" class="btn btn-primary" type="button">
+        Save to Sheets
+      </button>
+    </div>
+
+    <!-- Status bar — shown after save attempt -->
+    <div id="status-bar" class="status-bar hidden">
+      <span id="status-spinner" class="status-spinner hidden"></span>
+      <span id="status-message"></span>
+    </div>
+
+  </div><!-- /state-form -->
+
+  <!-- ── Success State ──────────────────────────────────────────────────── -->
+  <div id="state-success" class="state hidden">
+    <div class="center-box">
+      <div class="success-icon">✓</div>
+      <h2 class="success-title">Saved successfully!</h2>
+      <p class="muted" id="success-detail"></p>
+      <button id="btn-save-another" class="btn btn-secondary" type="button">
+        Track another job
+      </button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

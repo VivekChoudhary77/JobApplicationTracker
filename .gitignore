@@ -33,6 +33,7 @@ dist/
 icons/README.md
 README.md
 INSTRUCTIONS.md
+SETUP.md
 
 # ─── Local secrets (if you ever extract them) ─────────────
 .env

@@ -30,6 +30,7 @@ build/
 dist/
 
 # ─── User Files ─────────────────────────────────────
+icons/README.md
 README.md
 INSTRUCTIONS.md
 

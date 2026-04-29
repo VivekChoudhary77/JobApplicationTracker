@@ -133,17 +133,22 @@ async function refreshToken(staleToken) {
 }
 
 // ─── Duplicate Check ──────────────────────────────────────────────────────
+//
+// Returns { isDuplicate, rowNumber, existingDomain }.
+//   - rowNumber is 1-indexed (matches Sheets UI row numbers)
+//   - existingDomain is the value already in column J for that row, or ''
+// We read columns A:J so we can spot rows that exist but have an empty
+// domain cell, which lets the save flow patch them in place.
 
 async function checkDuplicate(token, company, role) {
   const url =
     `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}` +
-    `/values/${encodeURIComponent(SHEET_NAME)}!A:B`
+    `/values/${encodeURIComponent(SHEET_NAME)}!A:J`
 
   let response = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` }
   })
 
-  // Token expired — refresh once and retry
   if (response.status === 401) {
     token = await refreshToken(token)
     response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
@@ -160,11 +165,46 @@ async function checkDuplicate(token, company, role) {
   const compLower = company.toLowerCase().trim()
   const roleLower = role.toLowerCase().trim()
 
-  return rows.some(
-    row =>
-      (row[0] || '').toLowerCase().trim() === compLower &&
-      (row[1] || '').toLowerCase().trim() === roleLower
-  )
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]
+    if ((row[0] || '').toLowerCase().trim() === compLower &&
+        (row[1] || '').toLowerCase().trim() === roleLower) {
+      return {
+        isDuplicate: true,
+        rowNumber: i + 1,                  // 1-indexed for the Sheets API range
+        existingDomain: (row[9] || '').trim()
+      }
+    }
+  }
+
+  return { isDuplicate: false, rowNumber: null, existingDomain: '' }
+}
+
+// ─── Update a single cell ────────────────────────────────────────────────
+
+async function updateCell(token, range, value) {
+  const url =
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}` +
+    `/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`
+
+  const doUpdate = (tok) => fetch(url, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${tok}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ values: [[value]] })
+  })
+
+  let response = await doUpdate(token)
+  if (response.status === 401) {
+    token = await refreshToken(token)
+    response = await doUpdate(token)
+  }
+
+  const result = await response.json()
+  if (result.error) throw new Error(result.error.message)
+  return true
 }
 
 // ─── Append Row ───────────────────────────────────────────────────────────
@@ -173,8 +213,15 @@ async function appendToSheets(jobData) {
   try {
     let token = await getAuthToken()
 
-    const isDuplicate = await checkDuplicate(token, jobData.company, jobData.role)
-    if (isDuplicate) {
+    const dup = await checkDuplicate(token, jobData.company, jobData.role)
+    if (dup.isDuplicate) {
+      // If the user typed a domain and the existing row's J cell is empty,
+      // patch that single cell in place rather than rejecting as a duplicate.
+      const newDomain = (jobData.domain || '').trim()
+      if (newDomain && !dup.existingDomain) {
+        await updateCell(token, `${SHEET_NAME}!J${dup.rowNumber}`, newDomain)
+        return { success: true, updated: true, message: 'Domain added to existing entry' }
+      }
       return { success: false, duplicate: true, error: 'Already tracked!' }
     }
 

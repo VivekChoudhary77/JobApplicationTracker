@@ -207,7 +207,12 @@ function saveToSheets() {
     }
 
     if (response.success) {
-      successDetail.textContent = `${company} · ${role}`
+      const domainLine = jobData.domain
+        ? `\nDomain saved: ${jobData.domain}`
+        : `\nDomain: (empty — none captured)`
+      successDetail.textContent = response.updated
+        ? `${company} · ${role}${domainLine}\nUpdated existing entry`
+        : `${company} · ${role}${domainLine}`
       showState('success')
       return
     }

@@ -178,7 +178,8 @@ async function appendToSheets(jobData) {
       return { success: false, duplicate: true, error: 'Already tracked!' }
     }
 
-    // Column order: A=Company B=Role C=JD D=Job Link E=Date Applied F=HR Name G=HR Email H=Email Sent I=Date Sent
+    // Column order: A=Company B=Role C=JD D=Job Link E=Date Applied
+    //               F=HR Name G=HR Email H=Email Sent I=Date Sent J=Company Domain
     const values = [[
       jobData.company,
       jobData.role,
@@ -188,12 +189,13 @@ async function appendToSheets(jobData) {
       '',
       '',
       'No',
-      ''
+      '',
+      jobData.domain || ''
     ]]
 
     const appendURL =
       `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}` +
-      `/values/${encodeURIComponent(SHEET_NAME)}!A:I:append?valueInputOption=USER_ENTERED`
+      `/values/${encodeURIComponent(SHEET_NAME)}!A:J:append?valueInputOption=USER_ENTERED`
 
     const doAppend = (tok) => fetch(appendURL, {
       method: 'POST',

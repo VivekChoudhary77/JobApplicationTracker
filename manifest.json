@@ -38,6 +38,9 @@
     "https://*.oracle.com/*",
     "https://*.ultipro.com/*",
     "https://*.ukg.com/*",
+    "https://*.eightfold.ai/*",
+    "https://*.netflix.com/*",
+    "https://*.netflix.net/*",
     "https://sheets.googleapis.com/*",
     "https://oauth2.googleapis.com/*"
   ],
@@ -75,7 +78,10 @@
         "https://*.oraclecloud.com/*",
         "https://*.oracle.com/*",
         "https://*.ultipro.com/*",
-        "https://*.ukg.com/*"
+        "https://*.ukg.com/*",
+        "https://*.eightfold.ai/*",
+        "https://*.netflix.com/*",
+        "https://*.netflix.net/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle"

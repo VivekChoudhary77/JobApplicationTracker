@@ -20,6 +20,7 @@ const fieldCompany    = document.getElementById('field-company')
 const fieldRole       = document.getElementById('field-role')
 const fieldJD         = document.getElementById('field-jd')
 const fieldDate       = document.getElementById('field-date')
+const fieldDomain     = document.getElementById('field-domain')
 const confidenceBadge = document.getElementById('confidence-badge')
 const lowWarning      = document.getElementById('low-confidence-warning')
 
@@ -92,6 +93,7 @@ function populateForm(data) {
   fieldCompany.value = data.company || ''
   fieldRole.value    = data.role    || ''
   fieldJD.value      = data.jd      || ''
+  fieldDomain.value  = data.domain  || ''
 
   // Prefer the date from extraction (already MM/DD/YYYY from content.js)
   // but the date <input> needs YYYY-MM-DD
@@ -182,9 +184,10 @@ function saveToSheets() {
   const jobData = {
     company,
     role,
-    jd:   fieldJD.value.slice(0, 10000),
-    url:  currentTabUrl,
-    date: inputToMMDDYYYY(fieldDate.value) || inputToMMDDYYYY(todayInputValue())
+    jd:     fieldJD.value.slice(0, 10000),
+    url:    currentTabUrl,
+    date:   inputToMMDDYYYY(fieldDate.value) || inputToMMDDYYYY(todayInputValue()),
+    domain: fieldDomain.value.trim().toLowerCase()
   }
 
   btnSave.disabled = true
@@ -283,6 +286,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     fieldCompany.value = ''
     fieldRole.value    = ''
     fieldJD.value      = ''
+    fieldDomain.value  = ''
     fieldDate.value    = todayInputValue()
     hideStatus()
     btnSave.disabled   = false

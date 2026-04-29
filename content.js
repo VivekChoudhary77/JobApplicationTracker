@@ -30,6 +30,8 @@
     if (host.includes('joinhandshake') || host.includes('handshake')) return 'handshake'
     if (host.includes('paycomonline') || host.includes('paycom')) return 'paycom'
     if (host.includes('ultipro') || host.includes('ukg')) return 'ultipro'
+    if (host.includes('eightfold'))      return 'eightfold'
+    if (host.includes('netflix'))        return 'netflix'
     return null
   }
 
@@ -266,16 +268,36 @@
 
     workday: {
       company: [
-        '[data-automation-id="jobPostingHeader"] .css-129m7dg',
+        // 1. URL subdomain — Workday always has the company slug as the first
+        //    subdomain segment: cambiumlearning.wd1.myworkdayjobs.com → "Cambium Learning".
+        //    This is the most reliable signal because it's part of the URL itself.
+        () => {
+          const host = window.location.hostname.toLowerCase()
+          const slug = host.split('.')[0]
+          if (!slug || slug === 'www') return null
+          // Title-case, splitting on dashes/underscores: "cambium-learning" → "Cambium Learning"
+          return slug
+            .replace(/[-_]+/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase())
+            .trim()
+        },
+        // 2. Page title — usually "Role - Company Careers" or "Company - Role"
         () => {
           const t = document.title
-          return t.split('|').pop()?.trim() || t.split('-').pop()?.trim() || null
+          const parts = t.split(/[|\-\u2013\u2014]/).map(s => s.trim()).filter(Boolean)
+          // Common pattern: last segment with "Careers" suffix is the company
+          const careers = parts.find(p => /\bcareers?\b/i.test(p))
+          if (careers) return careers.replace(/\bcareers?\b/i, '').trim()
+          // Otherwise the LAST non-role segment is usually the company
+          return parts.length >= 2 ? parts[parts.length - 1] : null
         }
       ],
       role: [
         '[data-automation-id="jobPostingHeader"] h2',
+        '[data-automation-id="jobPostingHeader"] h1',
         '[data-automation-id="jobPostingHeader"]',
-        'h2.css-nbb0qz'
+        'h2.css-nbb0qz',
+        'h1[data-automation-id="jobPostingHeader"]'
       ],
       jd: [
         '[data-automation-id="jobPostingDescription"]',
@@ -729,6 +751,66 @@
       ]
     },
 
+    // Eightfold AI — *.eightfold.ai/careers/job/...
+    // The company subdomain is the company slug, and the URL often contains
+    // a `?domain=companyname.com` parameter that gives us the domain directly.
+    eightfold: {
+      company: [
+        // 1. URL subdomain: ralliant.eightfold.ai → "Ralliant"
+        () => {
+          const host = window.location.hostname.toLowerCase()
+          const slug = host.split('.')[0]
+          if (!slug || slug === 'www' || slug === 'careers') return null
+          return slug
+            .replace(/[-_]+/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase())
+            .trim()
+        },
+        // 2. Page title — usually "Role at Company" or "Company - Role"
+        () => {
+          const t = document.title
+          if (/\bat\s+/.test(t)) return t.split(/\s+at\s+/).pop()?.trim() || null
+          const parts = t.split(/[|\-\u2013\u2014]/).map(s => s.trim()).filter(Boolean)
+          return parts.length >= 2 ? parts[parts.length - 1] : null
+        },
+        '.company-name',
+        '[class*="company-name"]'
+      ],
+      role: [
+        'h1.position-title',
+        'h1[class*="position-title"]',
+        'h1[class*="job-title"]',
+        '[data-test-id="position-title"]',
+        'h1'
+      ],
+      jd: [
+        '[data-test-id="position-description"]',
+        '.position-description',
+        '[class*="position-description"]',
+        '[class*="job-description"]',
+        'main'
+      ]
+    },
+
+    // Netflix Careers — explore.jobs.netflix.net / jobs.netflix.com
+    netflix: {
+      company: [
+        () => 'Netflix' // The company is always Netflix on these domains
+      ],
+      role: [
+        'h1.job-title',
+        'h1[class*="job-title"]',
+        'h1[class*="position"]',
+        'h1'
+      ],
+      jd: [
+        '[class*="job-description"]',
+        '[class*="position-description"]',
+        'main',
+        'article'
+      ]
+    },
+
     generic: {
       company: [
         '[class*="company-name"]',
@@ -772,8 +854,13 @@
 
     // For platforms where every page under our match pattern is a job page,
     // just return true. For others, check for common hints.
-    const alwaysJobSites = ['greenhouse', 'lever', 'ashby', 'taleo', 'icims', 'bamboohr', 'paycom', 'oracle', 'ultipro']
+    const alwaysJobSites = ['greenhouse', 'lever', 'ashby', 'taleo', 'icims', 'bamboohr', 'paycom', 'oracle', 'ultipro', 'eightfold']
     if (alwaysJobSites.includes(site)) return true
+
+    // Netflix careers — only treat specific job pages as job pages, not landing/search pages
+    if (site === 'netflix') {
+      return url.includes('/careers/job/') || url.includes('/jobs/') || url.includes('pid=')
+    }
 
     // LinkedIn feed pages with a selected job (e.g. /jobs/collections/...?currentJobid=...)
     if (site === 'linkedin' && url.includes('currentjobid')) return true
@@ -832,6 +919,181 @@
     return null
   }
 
+  // ─── Domain Extractor ─────────────────────────────────────────────────────
+  //
+  // Strategy: collect every URL/email already visible on the page (from links,
+  // images, JD text, and meta tags), throw out the obvious junk (job boards,
+  // ATS providers, social media, common 3rd-party services), then return the
+  // domain whose first segment matches the company name we already extracted.
+  //
+  // No external API calls. No naïve `companyName + ".com"`. Naturally handles
+  // .ai / .io / .co / .edu / .in domains because we read real hostnames from
+  // the page rather than constructing them.
+
+  const DOMAIN_BLACKLIST = new Set([
+    // Job boards
+    'linkedin.com', 'indeed.com', 'glassdoor.com', 'ziprecruiter.com',
+    'dice.com', 'monster.com', 'careerbuilder.com', 'wellfound.com',
+    'weworkremotely.com', 'remoteok.com', 'flexjobs.com', 'usajobs.gov',
+    'joinhandshake.com', 'handshake.com',
+    // ATS / HRIS platforms
+    'greenhouse.io', 'lever.co', 'myworkdayjobs.com', 'workday.com',
+    'taleo.net', 'icims.com', 'smartrecruiters.com', 'bamboohr.com',
+    'ashbyhq.com', 'rippling.com', 'paycomonline.net', 'oraclecloud.com',
+    'oracle.com', 'ultipro.com', 'ukg.com', 'jobvite.com', 'breezy.hr',
+    // Social / messaging / video
+    'twitter.com', 'x.com', 'facebook.com', 'instagram.com', 'youtube.com',
+    'youtu.be', 'tiktok.com', 'reddit.com', 'pinterest.com', 'snapchat.com',
+    'whatsapp.com', 'telegram.org', 'discord.com', 'discord.gg',
+    // Generic email providers
+    'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'live.com',
+    'yahoo.com', 'aol.com', 'icloud.com', 'protonmail.com', 'mail.com',
+    // Tech giants (almost never the actual employer in JDs)
+    'google.com', 'microsoft.com', 'apple.com', 'amazon.com',
+    // CDNs / cloud / analytics noise
+    'amazonaws.com', 'cloudfront.net', 'googleapis.com', 'gstatic.com',
+    'doubleclick.net', 'googletagmanager.com', 'google-analytics.com',
+    'hubspot.com', 'cookielaw.org', 'recaptcha.net', 'cloudflare.com',
+    // Misc 3rd-party
+    'github.com', 'gitlab.com', 'bitbucket.org', 'medium.com',
+    'crunchbase.com', 'producthunt.com', 'stackoverflow.com', 'quora.com',
+    'wikipedia.org', 'mozilla.org', 'w3.org', 'schema.org',
+    'simplifyjobs.com', 'simplify.jobs'
+  ])
+
+  function isBlacklisted(domain) {
+    if (!domain) return true
+    if (DOMAIN_BLACKLIST.has(domain)) return true
+    for (const bad of DOMAIN_BLACKLIST) {
+      if (domain.endsWith('.' + bad)) return true
+    }
+    return false
+  }
+
+  function normalizeHost(host) {
+    if (!host) return null
+    return host.toLowerCase().replace(/^www\./, '').trim()
+  }
+
+  // Strip leading/trailing punctuation and common legal-entity suffixes so
+  // "Hugging Face, Inc." → "huggingface" for similarity comparison.
+  function normalizeCompany(name) {
+    if (!name) return ''
+    return name
+      .toLowerCase()
+      .replace(/[®©™]/g, '')
+      .replace(/[^a-z0-9]+/g, '')
+      .replace(/(inc|incorporated|llc|ltd|limited|corp|corporation|gmbh|ag|sa|plc|co|company|holdings)$/, '')
+  }
+
+  function collectCandidateDomains(jdText) {
+    const found = new Set()
+
+    // 1. Every <a href> on the page
+    document.querySelectorAll('a[href]').forEach(a => {
+      try {
+        const u = new URL(a.href, window.location.href)
+        if (u.protocol === 'http:' || u.protocol === 'https:') {
+          const h = normalizeHost(u.hostname)
+          if (h) found.add(h)
+        }
+      } catch (_) {}
+    })
+
+    // 2. Every <img src> — company logos often come from the company's own CDN
+    document.querySelectorAll('img[src]').forEach(img => {
+      try {
+        const u = new URL(img.src, window.location.href)
+        const h = normalizeHost(u.hostname)
+        if (h) found.add(h)
+      } catch (_) {}
+    })
+
+    // 3. <meta property="og:url"> and <link rel="canonical">
+    const og = document.querySelector('meta[property="og:url"]')?.content
+    const canon = document.querySelector('link[rel="canonical"]')?.href
+    for (const url of [og, canon]) {
+      if (!url) continue
+      try {
+        const u = new URL(url, window.location.href)
+        const h = normalizeHost(u.hostname)
+        if (h) found.add(h)
+      } catch (_) {}
+    }
+
+    // 4. URLs embedded as text inside the JD: "Visit us at https://huggingface.co"
+    const text = jdText || ''
+    const urlRe = /https?:\/\/(?:www\.)?([a-z0-9.-]+\.[a-z]{2,})/gi
+    let m
+    while ((m = urlRe.exec(text)) !== null) {
+      const h = normalizeHost(m[1])
+      if (h) found.add(h)
+    }
+
+    // 5. Email domains in JD: "Contact careers@openai.com"
+    const emailRe = /[a-z0-9._%+-]+@([a-z0-9.-]+\.[a-z]{2,})/gi
+    while ((m = emailRe.exec(text)) !== null) {
+      const h = normalizeHost(m[1])
+      if (h) found.add(h)
+    }
+
+    return [...found]
+  }
+
+  function extractDomain(company, jdText) {
+    // 0. URL query parameters often contain the company domain directly:
+    //    Eightfold: ?domain=ralliant.com
+    //    Greenhouse referrer: ?from=companyname.com
+    //    Custom ATS pages frequently include similar hints.
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const directKeys = ['domain', 'company_domain', 'company', 'from', 'site']
+      for (const key of directKeys) {
+        const val = params.get(key)
+        if (val && /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(val)) {
+          const clean = normalizeHost(val)
+          if (clean && !isBlacklisted(clean)) return clean
+        }
+      }
+    } catch (_) {}
+
+    const normCompany = normalizeCompany(company)
+    if (!normCompany || normCompany.length < 2) return ''
+
+    const candidates = collectCandidateDomains(jdText)
+      .filter(d => !isBlacklisted(d))
+
+    if (candidates.length === 0) return ''
+
+    // Compare each candidate's first segment to the normalized company name.
+    // Highest-confidence match wins. Ties broken by shorter domain (less
+    // likely to be a long sub-property domain).
+    let best = null
+    let bestScore = 0
+
+    for (const domain of candidates) {
+      const root = domain.split('.')[0].toLowerCase()
+      let score = 0
+      if (root === normCompany)              score = 100  // exact: stripe ↔ stripe.com
+      else if (root.startsWith(normCompany)) score = 60   // stripe ↔ stripeenterprise.com
+      else if (normCompany.startsWith(root)) score = 50   // huggingface ↔ huggingface.co
+      else if (root.includes(normCompany))   score = 30   // stripe ↔ getstripe.io
+      else if (normCompany.includes(root) && root.length >= 3) score = 25
+
+      // Tie-break: prefer shorter domains
+      score += Math.max(0, 20 - domain.length)
+
+      if (score > bestScore) {
+        bestScore = score
+        best = domain
+      }
+    }
+
+    // Only return if the match is reasonably confident — otherwise leave blank
+    // so the user fills it manually rather than seeing a wrong guess.
+    return bestScore >= 25 ? (best || '') : ''
+  }
+
   // ─── Date Formatter ───────────────────────────────────────────────────────
 
   function todayMMDDYYYY() {
@@ -863,10 +1125,13 @@
     else if (extracted === 2) confidence = 'medium'
     else                      confidence = 'low'
 
+    const domain = extractDomain(company, jd)
+
     return {
       company,
       role,
       jd,
+      domain,
       date: todayMMDDYYYY(),
       url: window.location.href,
       site: site || 'unknown',
